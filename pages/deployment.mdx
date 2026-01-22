@@ -309,25 +309,16 @@ healthcheck:
   retries: 3
 ```
 
-## Resource Requirements
+## Production Checklist
 
-### Minimum
+Before going live, ensure you have:
+1. **Configured PostgreSQL**: For persistent configuration and usage data.
+2. **Enabled Redis**: Required for distributed token counting and HA.
+3. **Setup IAM**: Bootstrap the administrator account in the UI and define teams.
+4. **AWS Setup**: If using Bedrock, ensure the Knull service role has necessary permissions (Assumption Role or attached policy).
+5. **SMTP Config**: Configure SMTP in the UI settings to enable team invitations.
 
-| Resource | Value |
-|----------|-------|
-| Memory | 256 MB |
-| CPU | 250 m |
-
-### Recommended
-
-| Resource | Value |
-|----------|-------|
-| Memory | 1 GB |
-| CPU | 1000 m |
-
-### High Traffic
-
-| Resource | Value |
-|----------|-------|
-| Memory | 2 GB |
-| CPU | 2000 m |
+## Next Steps
+- [Architecture](./architecture.mdx) - Understand the internal components.
+- [Management UI](./ui.mdx) - Explore the web platform.
+- [IAM & Policies](./api-keys.mdx) - Governance and access control.

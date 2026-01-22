@@ -209,17 +209,33 @@ Knull counts tokens for usage tracking:
 | `CachedInputToken` | Cached prompt tokens |
 | `TotalToken` | Input + Output |
 
-### Custom Token Cost
+## CEL Cost Calculation
 
-Configure custom cost calculation:
+Knull allows you to calculate request costs using complex logic via Common Expression Language (CEL). This is useful when backends have tiered pricing or when you want to apply custom multipliers.
 
+### Configuration
 ```yaml
-filter:
-  llmRequestCosts:
-    - metadataKey: "cost"
-      type: CEL
-      cel: "output_token * 3 + input_token"
+# Inside your gateway or model configuration
+llmRequestCosts:
+  - metadataKey: "custom_cost"
+    type: CEL
+    cel: "model == 'gpt-4' ? input_tokens * 2 + output_tokens * 4 : total_tokens"
 ```
+
+### Available Variables
+| Variable | Type | Description |
+| :--- | :--- | :--- |
+| `model` | string | The model name in the request. |
+| `backend` | string | The target backend name (name.namespace). |
+| `input_tokens` | uint | Count of input (prompt) tokens. |
+| `output_tokens` | uint | Count of output (completion) tokens. |
+| `cached_input_tokens`| uint | Count of cached input tokens. |
+| `total_tokens` | uint | Total tokens processed. |
+
+### Example Expressions
+- **Tiered Pricing**: `backend == 'premium' ? total_tokens * 10 : total_tokens`
+- **Cache Discount**: `(input_tokens - cached_input_tokens) + (cached_input_tokens * 0.1)`
+- **Safety Margin**: `total_tokens * 1.1`
 
 ## Metrics and Observability
 

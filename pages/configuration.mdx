@@ -35,14 +35,32 @@ Defines the backend LLM providers.
 | `awsRegion` | string | Required for `aws_*` providers. |
 | `awsAccessKey` | string | AWS Access Key. |
 | `awsSecretKey` | string | AWS Secret Key. |
+| `assumeRoleArn`| string | (Optional) IAM Role ARN to assume for Bedrock access. |
 | `gcpProject` | string | Required for `gcp_*` providers. |
 | `gcpLocation` | string | Required for `gcp_*` providers. |
 | `gcpAccessToken`| string | GCP Access Token. |
 | `alias` | string | (Optional) Maps a client-side model name to this backend. |
 | `schema` | object | (Optional) Custom API schema configuration. |
 | `auth` | object | (Optional) Backend authentication policy. |
-| `headerMutation`| object | (Optional) Header mutation rules. |
-| `bodyMutation`  | object | (Optional) Body mutation rules. |
+
+### Versioned API Schema
+Customize how Knull communicates with the backend.
+
+```yaml
+models:
+  - id: gemini-openai
+    provider: openai_compatible
+    endpoint: ai.google.dev
+    schema:
+      name: OpenAI
+      prefix: /v1beta/openai
+```
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `name` | string | Schema name (e.g., `OpenAI`, `Anthropic`). |
+| `prefix` | string | (Optional) URL prefix for the API (e.g., `/v1beta/openai`). |
+| `version`| string | (Optional) API version identifier. |
 
 ## API Keys
 Defines keys used by your applications to authenticate with Knull.

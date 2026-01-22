@@ -1,23 +1,23 @@
-# Knull - AI Control Plane
+# Knull - Enterprise AI Control Plane
 
-Knull is a high-performance, standalone AI Control Plane designed to run as a local or edge-resident control plane and data plane for AI traffic. It provides a unified interface for routing requests to multiple LLM providers with built-in observability, authentication, and budget enforcement.
+Knull is a high-performance, standalone AI Control Plane designed for the modern enterprise. It provides a unified hub for governing AI traffic, managing identity, and orchestrating cloud resources across multiple LLM providers.
 
 ## How it Works
 
-Knull consists of a **Control Plane** (Knull Core) and a **Data Plane** (Envoy Proxy).
+Knull consists of an **AI Control Plane** (Knull Core) and a **Data Plane** (Envoy Proxy).
 
-1.  **Unified API**: Your applications send OpenAI-format requests to Knull.
-2.  **Routing & Policy**: Knull identifies the client via API key, checks their token budget, and selects the optimal backend model.
-3.  **Translation**: If the backend is not OpenAI (e.g., Anthropic or Bedrock), Knull's **External Processor (ExtProc)** translates the request on the fly.
-4.  **Observability**: Knull counts every token and logs usage to its internal database.
+1.  **Unified Hub**: Applications connect to Knull using standard OpenAI-format APIs.
+2.  **IAM & Governance**: Knull identifies users via teams/orgs, enforces RBAC, and validates token budgets.
+3.  **Cloud Provisioning**: Knull can directly provision models in AWS Bedrock and track costs using native cloud metrics.
+4.  **Extensive Observability**: Track every request with audit logs, time-series analytics, and cost-flow diagrams.
 
 ## Key Features
 
-- **Standalone Binary**: Single executable manages Envoy and the External Processor without Kubernetes.
-- **Multi-Provider Support**: Unified access to Azure OpenAI, Anthropic, AWS Bedrock, GCP VertexAI, and more.
-- **Token Budgets**: Enforce granular token limits per API key and per model.
-- **MCP Support**: Native Model Context Protocol proxying for AI tool integration.
-- **Management UI**: Built-in Next.js dashboard for monitoring and configuration.
+- **🛡️ Enterprise IAM**: Multi-tenant RBAC with support for Teams, Organizations, and Email Invites.
+- **☁️ Cloud Native**: One-click provisioning for AWS Bedrock with IAM Assume Role support.
+- **📊 Advanced Analytics**: Cost tracking via Sankey diagrams, Time-series analysis, and AWS Cost Explorer integration.
+- **🚀 High Performance**: Built on Envoy Proxy with a Go-based External Processor for sub-millisecond overhead.
+- **🛠️ Developer First**: Native MCP support and a built-in AI Playground for testing and iteration.
 
 ## Quick Start
 
@@ -39,7 +39,7 @@ Set your API key as an environment variable (Knull automatically substitutes the
 export OPENAI_API_KEY="sk-..."
 ```
 
-### 3. Test the Gateway
+### 3. Test the Hub
 
 ```bash
 curl http://localhost:1975/v1/chat/completions \
@@ -56,3 +56,4 @@ curl http://localhost:1975/v1/chat/completions \
 - [Configuration](./configuration.mdx) - Master the YAML schema.
 - [API Keys & Budgets](./api-keys.mdx) - Secure your gateway and control costs.
 - [MCP Support](./mcp.mdx) - Connect AI models to your tools.
+

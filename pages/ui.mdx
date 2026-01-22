@@ -1,48 +1,49 @@
 # Management UI
 
-Knull includes a built-in web dashboard for managing models, monitoring usage, and testing prompts in a playground.
+Knull includes a comprehensive web platform for managing your AI infrastructure, identity, and costs.
+
+## Navigation Sections
+
+### 1. Catalog & Provisioning
+- **Model Catalog**: View all configured models across providers.
+- **AWS Cloud**: Connect your AWS account and provision Bedrock models with one click. Supports managing Inference Profiles and region-specific enablement.
+
+### 2. Identity & Access Management (IAM)
+- **Users & Teams**: Manage user accounts and group them into teams for collaborative access.
+- **Roles & Permissions**: Define fine-grained RBAC roles (e.g., Administrator, Auditor, Developer).
+- **Invitations**: Securely invite new team members via email.
+
+### 3. Analytics & Cost
+- **Dashboard**: Real-time overview of request volume, token usage, and active models.
+- **Cost Sankey**: Visualize how costs flow from specific teams and API keys to LLM providers.
+- **Time-Series Graphs**: Analyze historical usage patterns with flexible granularity.
+- **Cloud Costs**: Integrated view of actual AWS cloud billing data.
+
+### 4. Developer Tools
+- **AI Playground**: Chat interface to test and compare models directly.
+- **API Key Management**: Generate and manage client-facing keys with policy assignments.
+- **Audit Logs**: Traceable history of all administrative actions.
 
 ## Getting Started
 
-The UI is built with Next.js and is located in the `knull/ui` directory.
+### 1. Initial Setup (Bootstrap)
+The first time you access the UI, you will be prompted to create the initial Administrator account. This "Bootstrap" phase ensures the system is secured from the start.
 
-### 1. Installation
-Navigate to the UI directory and install dependencies:
+### 2. Environment Configuration
+The UI communicates with the Knull Admin API. Ensure your environment is configured correctly:
+
+```env
+# .env.local
+NEXT_PUBLIC_KNULL_API_URL=http://localhost:8000
+```
+
+### 3. Local Development
 ```bash
 cd knull/ui
 npm install
-```
-
-### 2. Development Mode
-Run the dashboard locally:
-```bash
 npm run dev
 ```
-The UI will be available at `http://localhost:3000`.
 
-## Features
+## Security & Authentication
+The UI uses JWT-based authentication. Session tokens are stored securely in local storage and included in all API requests. For enterprise deployments, ensure the UI is served over HTTPS.
 
-### Dashboard
-Overview of active gateways, configured models, and real-time token usage metrics.
-
-### Model Management
-Add, edit, or remove LLM providers and models through a visual interface. Changes are synchronized with the Knull Core backend.
-
-### API Key Management
-Generate and revoke client API keys and manage their associated budget policies.
-
-### AI Playground
-A built-in chat interface to test your configured models.
-- **Model Selector**: Switch between configured models (e.g., GPT-4 on Azure vs Claude 3.5 on Anthropic).
-- **System Prompt**: Customize the system behavior.
-- **Token Info**: View the exact token count and cost for each interaction.
-
-## Configuration
-
-The UI communicates with the Knull Admin API (default `:1064`). You can configure the backend URL in `knull/ui/.env.local`:
-
-```env
-NEXT_PUBLIC_KNULL_API_URL=http://localhost:1064
-```
-
-> **Note**: Ensure Knull Core is running with the `--admin-port` active for the UI to function correctly.
