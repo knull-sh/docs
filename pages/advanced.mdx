@@ -282,6 +282,33 @@ resources:
 
 ### View Logs
 
+Knull follows XDG standards for log placement.
+
+```bash
+# Follow logs in the state directory
+tail -f ~/.local/state/knull/runs/*/aigw.log
+```
+
+### Check Health
+
+```bash
+# Basic health
+curl http://localhost:1064/health
+
+# Readiness
+curl http://localhost:1064/ready
+```
+
+### View Configuration
+
+```bash
+# View current active configuration
+curl http://localhost:1064/config
+```
+
+
+### View Logs
+
 ```bash
 # Follow logs
 tail -f ~/.local/state/knull/runs/*/aigw.log

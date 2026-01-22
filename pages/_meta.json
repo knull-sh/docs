@@ -1,9 +1,12 @@
 {
   "index": "Introduction",
+  "architecture": "Architecture",
   "features": "Features",
   "configuration": "Configuration",
   "providers": "Providers",
   "deployment": "Deployment",
+  "cli": "CLI Reference",
+  "ui": "Management UI",
   "api-keys": "API Keys & Policies",
   "mcp": "MCP Support",
   "advanced": "Advanced"

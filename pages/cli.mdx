@@ -1,0 +1,53 @@
+# CLI Reference
+
+The `knull` binary provides commands for running the gateway and managing the local environment.
+
+## Global Flags
+
+These flags apply to all commands and control how Knull handles local directories (following XDG standards).
+
+| Flag | Env Var | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--config-home` | `KNULL_CONFIG_HOME` | `~/.config/knull` | Directory for configuration files. |
+| `--data-home` | `KNULL_DATA_HOME` | `~/.local/share/knull` | Directory for the SQLite DB and Envoy binaries. |
+| `--state-home` | `KNULL_STATE_HOME` | `~/.local/state/knull` | Directory for logs and persistent state. |
+| `--runtime-dir` | `KNULL_RUNTIME_DIR` | `/tmp/knull-$UID` | Directory for ephemeral runtime files. |
+
+## Commands
+
+### `knull run`
+Starts the Knull AI Gateway.
+
+**Usage:**
+```bash
+knull run [path/to/config.yaml] [flags]
+```
+
+**Flags:**
+- `--path`: (Positional) Path to the YAML config. If omitted, Knull loads the last saved configuration from the database.
+- `--debug`: Enable verbose debug logging to stderr.
+- `--admin-port`: Port for the Admin API (metrics/health). Default: `1064`.
+- `--mcp-config`: Path to a dedicated MCP servers JSON configuration.
+- `--mcp-json`: JSON string of MCP servers configuration.
+- `--run-id`: Unique identifier for this execution (useful for log tracing).
+- `--mcp-session-encryption-iterations`: Number of iterations for MCP session encryption key derivation. Default: `100000`.
+
+**Example:**
+```bash
+# Start with debug logging and a specific config
+knull run ./my-config.yaml --debug --admin-port 8080
+```
+
+### `knull version`
+Prints the current version of Knull Core.
+
+```bash
+knull version
+# Output: Knull Core v0.0.1
+```
+
+## Persistence Behavior
+
+1.  **Import**: When you run `knull run <file.yaml>`, Knull parses the YAML and **upserts** it into the internal SQLite database.
+2.  **Persistence**: Subsequent runs with just `knull run` (no path) will use the settings stored in the database.
+3.  **Reset**: To completely reset Knull, delete the data directory (default `~/.local/share/knull`) or run `rm ~/.local/share/knull/knull.db`.

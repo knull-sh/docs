@@ -1,0 +1,46 @@
+# Architecture
+
+Knull is designed to be a lightweight but production-ready AI Gateway. It separates the **Control Plane** logic from the **Data Plane** execution for maximum performance and reliability.
+
+## System Components
+
+### 1. Knull Core (Control Plane)
+The main Go binary (`knull`) acts as the orchestrator. It:
+- **Simulates Envoy Gateway**: Uses a virtualized control plane to generate Envoy configuration (xDS) from your YAML files.
+- **Lifecycle Management**: Downloads, starts, and monitors the Envoy binary.
+- **Admin API**: Serves metrics, health checks, and handles configuration hot-reloads.
+
+### 2. Envoy Proxy (Data Plane)
+Knull uses [Envoy](https://www.envoyproxy.io/) as its high-performance network proxy. Envoy handles:
+- **Traffic Listening**: Receives incoming HTTP/HTTPS traffic (default port `1975`).
+- **Routing**: Matches requests to backends based on headers or the `model` field.
+- **Filters**: Uses an External Processing filter to delegate AI logic to Knull.
+
+### 3. External Processor (ExtProc)
+This is a sidecar-style service built into Knull Core that communicates with Envoy via gRPC. It is responsible for:
+- **Token Counting**: Parsing request/response bodies to calculate input/output tokens.
+- **API Translation**: Converting between different provider schemas (e.g., converting an OpenAI `chat/completions` request to an Anthropic `messages` request).
+- **Authentication**: Injecting backend API keys (Azure, AWS, etc.) into the proxied request.
+
+### 4. Storage Layer
+- **SQLite**: Local persistence for configuration, API keys, and metrics.
+- **PostgreSQL**: Optional backend for High Availability (HA) deployments.
+- **Redis**: Optional distributed cache for real-time token counters across multiple instances.
+
+## Data Flow (Request Sequence)
+
+1.  **Client Request**: Application sends a request to `:1975/v1/chat/completions`.
+2.  **Envoy Match**: Envoy identifies the target `AIGatewayRoute`.
+3.  **ExtProc (Request)**: Envoy sends the request headers and body to Knull's ExtProc.
+    - ExtProc validates the client's `Authorization` header.
+    - ExtProc checks token budget in SQLite/Redis.
+    - ExtProc translates the body if the backend provider differs.
+4.  **Upstream Call**: Envoy forwards the modified request to the LLM Provider (e.g., Anthropic).
+5.  **ExtProc (Response)**: Envoy sends the response back to ExtProc.
+    - ExtProc parses usage tokens from the response.
+    - ExtProc updates the database/Redis with the new usage.
+6.  **Client Response**: Envoy sends the final translated response back to the client.
+
+## High Availability
+
+In HA mode, multiple Knull instances share a PostgreSQL database for configuration and a Redis instance for real-time usage tracking. When configuration changes, a notification is sent via Redis Pub/Sub to trigger a hot-reload on all instances simultaneously.

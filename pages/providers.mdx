@@ -12,8 +12,7 @@ Knull supports multiple LLM providers through a unified interface.
 | AWS Bedrock | `aws_bedrock` | Amazon Bedrock (OpenAI-format models) |
 | AWS Anthropic | `aws_anthropic` | Amazon Bedrock (Anthropic models) |
 | Anthropic | `anthropic` | Anthropic API (Claude) |
-| GCP VertexAI | `gcp_vertex` | Google Cloud VertexAI (Gemini) |
-| GCP Anthropic | `gcp_anthropic` | Google Cloud VertexAI (Claude) |
+| GCP VertexAI | `gcp_vertex` | Google Cloud VertexAI (Gemini/Claude) |
 | Cohere | `cohere` | Cohere API |
 
 ## Azure OpenAI
@@ -146,48 +145,20 @@ export ANTHROPIC_API_KEY="sk-ant-api03-..."
 
 ## GCP VertexAI
 
-### Gemini Models
+### Gemini and Claude on VertexAI
 
 ```yaml
 models:
   - id: gemini-1.5-pro
     provider: gcp_vertex
-    endpoint: ${GCP_VERTEX_ENDPOINT}
+    endpoint: us-central1-aiplatform.googleapis.com
     gcpProject: my-project
     gcpLocation: us-central1
     gcpAccessToken: ${GCP_ACCESS_TOKEN}
-```
 
-### Configuration Fields
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| `endpoint` | Yes | VertexAI endpoint |
-| `gcpProject` | Yes | GCP project ID |
-| `gcpLocation` | Yes | GCP region (e.g., `us-central1`) |
-| `gcpAccessToken` | No | GCP access token |
-
-### Authentication
-
-Knull supports GCP authentication via:
-
-1. **Workload Identity**: Use service account tokens
-2. **Access Token**: Pass tokens directly
-3. **ADC**: Application Default Credentials
-
-```bash
-export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
-```
-
-## GCP Anthropic (VertexAI)
-
-### Claude Models on VertexAI
-
-```yaml
-models:
-  - id: claude-3-5-sonnet@vertex_ai
-    provider: gcp_anthropic
-    endpoint: ${GCP_VERTEX_ENDPOINT}
+  - id: claude-3-5-sonnet@vertex
+    provider: gcp_vertex
+    endpoint: us-central1-aiplatform.googleapis.com
     gcpProject: my-project
     gcpLocation: us-central1
     gcpAccessToken: ${GCP_ACCESS_TOKEN}

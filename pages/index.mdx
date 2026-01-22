@@ -1,47 +1,58 @@
 # Knull - AI Gateway
 
-Knull is a high-performance, standalone AI Gateway designed to run as a local or edge-resident control plane and data plane for AI traffic. It provides a unified interface for routing requests to multiple LLM providers with built-in observability, authentication, and rate limiting.
+Knull is a high-performance, standalone AI Gateway designed to run as a local or edge-resident control plane and data plane for AI traffic. It provides a unified interface for routing requests to multiple LLM providers with built-in observability, authentication, and budget enforcement.
 
-## What is Knull?
+## How it Works
 
-Knull Core is the standalone foundation of the Knull AI Gateway. It is designed to run as a single executable (`knull`) that manages Envoy and the External Processor without requiring a Kubernetes cluster.
+Knull consists of a **Control Plane** (Knull Core) and a **Data Plane** (Envoy Proxy).
+
+1.  **Unified API**: Your applications send OpenAI-format requests to Knull.
+2.  **Routing & Policy**: Knull identifies the client via API key, checks their token budget, and selects the optimal backend model.
+3.  **Translation**: If the backend is not OpenAI (e.g., Anthropic or Bedrock), Knull's **External Processor (ExtProc)** translates the request on the fly.
+4.  **Observability**: Knull counts every token and logs usage to its internal database.
 
 ## Key Features
 
-- **Standalone Binary**: Single executable that manages Envoy and the External Processor
-- **Multi-Provider Support**: Route to Azure OpenAI, OpenAI, AWS Bedrock, Anthropic, GCP VertexAI, and more
-- **No Kubernetes Required**: Uses a virtualized control plane to run Envoy Gateway logic locally
-- **API Key Management**: Built-in support for client API keys with budget enforcement
-- **Token Usage Tracking**: Track token usage per API key and model
-- **MCP Support**: Model Context Protocol support for AI tool integration
-- **High Availability**: Redis-backed state for multi-instance deployments
+- **🚀 Standalone Binary**: Single executable manages Envoy and the External Processor without Kubernetes.
+- **🔌 Multi-Provider Support**: Unified access to Azure OpenAI, Anthropic, AWS Bedrock, GCP VertexAI, and more.
+- **🛡️ Token Budgets**: Enforce granular token limits per API key and per model.
+- **🛠️ MCP Support**: Native Model Context Protocol proxying for AI tool integration.
+- **📊 Management UI**: Built-in Next.js dashboard for monitoring and configuration.
 
 ## Quick Start
+
+### 1. Build and Run
 
 ```bash
 # Build the binary
 make build
 
-# Run with a configuration file
+# Start Knull with an example config
 ./bin/knull run examples/knull.yaml
-
-# Test the gateway
-curl http://localhost:1975/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "hi"}]}'
 ```
 
-## Architecture
+### 2. Configure a Provider
 
-Knull consists of three main components:
+Set your API key as an environment variable (Knull automatically substitutes these in YAML):
 
-1. **Envoy Gateway**: Handles incoming AI traffic and routes to configured backends
-2. **External Processor**: Performs request/response processing including token counting, header mutation, and authentication
-3. **SQLite Database**: Stores configuration, API keys, and usage data
+```bash
+export OPENAI_API_KEY="sk-..."
+```
+
+### 3. Test the Gateway
+
+```bash
+curl http://localhost:1975/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [{"role": "user", "content": "Hello Knull!"}]
+  }'
+```
 
 ## Next Steps
 
-- [Features](/features) - Learn about all Knull capabilities
-- [Configuration](/configuration) - Set up your gateway
-- [Providers](/providers) - Configure LLM providers
-- [Deployment](/deployment) - Deploy in production
+- [Architecture](./architecture.mdx) - Deep dive into the system design.
+- [Configuration](./configuration.mdx) - Master the YAML schema.
+- [API Keys & Budgets](./api-keys.mdx) - Secure your gateway and control costs.
+- [MCP Support](./mcp.mdx) - Connect AI models to your tools.
