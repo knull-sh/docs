@@ -9,7 +9,7 @@ const config: DocsThemeConfig = {
   chat: {
     link: 'https://discord.com',
   },
-  docsRepositoryBase: 'https://github.com/knull/docs/edit/main',
+  docsRepositoryBase: 'https://github.com/knull-sh/docs/edit/main',
   footer: {
     text: 'Knull Documentaion',
   },
