@@ -1,0 +1,319 @@
+# MCP Support
+
+Knull provides built-in support for the Model Context Protocol (MCP), enabling AI models to interact with external tools and services.
+
+## What is MCP?
+
+MCP (Model Context Protocol) is an open protocol that enables AI models to connect with external tools and data sources. Knull acts as an MCP proxy, allowing configured MCP servers to be accessed through the gateway.
+
+## MCP Configuration
+
+### Basic MCP Server
+
+```yaml
+mcp:
+  servers:
+    - name: filesystem
+      type: stdio
+      command: npx
+      args:
+        - -y
+        - @modelcontextprotocol/server-filesystem
+        - /tmp
+      env:
+        - key: MCP_TIMEOUT
+          value: "30"
+
+    - name: github
+      type: http
+      url: https://mcp.github.io
+      headers:
+        - key: Authorization
+          value: "Bearer ${GITHUB_TOKEN}"
+```
+
+### MCP Server Types
+
+| Type | Description | Use Case |
+|------|-------------|----------|
+| `stdio` | Process-based server | Local tools, CLIs |
+| `http` | HTTP-based server | Remote MCP services |
+| `streamable-http` | Streamable HTTP | Real-time updates |
+
+### MCP Server Configuration
+
+```yaml
+mcp:
+  servers:
+    - name: server-name
+      type: stdio
+      command: /path/to/server
+      args:
+        - arg1
+        - arg2
+      env:
+        - key: ENV_VAR
+          value: "value"
+      # Session encryption (recommended)
+      sessionEncryptionKey: ${MCP_SESSION_KEY}
+      sessionEncryptionIterations: 100000
+```
+
+### MCP Server Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Unique name for the server |
+| `type` | Yes | Server type (`stdio`, `http`, `streamable-http`) |
+| `command` | Yes (stdio) | Executable command |
+| `args` | Yes (stdio) | Command arguments |
+| `url` | Yes (http) | Server URL |
+| `headers` | No (http) | HTTP headers |
+| `env` | No | Environment variables |
+| `sessionEncryptionKey` | No | Key for session encryption |
+| `sessionEncryptionIterations` | No | PBKDF2 iterations (default: 100000) |
+
+## MCP Proxy
+
+Knull includes an MCP proxy server that:
+
+1. **Proxies MCP Requests**: Routes MCP traffic through the gateway
+2. **Authentication**: Validates API keys for MCP access
+3. **Rate Limiting**: Enforces rate limits on MCP calls
+4. **Logging**: Logs all MCP interactions
+
+### MCP Proxy Configuration
+
+```yaml
+mcp:
+  servers:
+    - name: filesystem
+      type: stdio
+      command: npx
+      args:
+        - -y
+        - @modelcontextprotocol/server-filesystem
+        - /data
+
+  proxy:
+    host: 0.0.0.0
+    port: 1064  # Shares admin port
+    enabled: true
+```
+
+### MCP Proxy Ports
+
+| Port | Service | Description |
+|------|---------|-------------|
+| 1975 | AI Data Plane | AI requests including MCP |
+| 1064 | Admin API | Health, metrics, MCP proxy |
+
+## Using MCP with AI Models
+
+### Request with MCP Tools
+
+```bash
+curl http://localhost:1975/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk-knull-client1-xxxxx" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Read the file at /tmp/test.txt"
+      }
+    ],
+    "tools": [
+      {
+        "type": "filesystem",
+        "name": "read_file",
+        "parameters": {
+          "path": "/tmp/test.txt"
+        }
+      }
+    ]
+  }'
+```
+
+### MCP Tool Definition
+
+Tools are automatically discovered from configured MCP servers:
+
+```yaml
+mcp:
+  servers:
+    - name: filesystem
+      type: stdio
+      command: npx
+      args:
+        - -y
+        - @modelcontextprotocol/server-filesystem
+        - /tmp
+```
+
+Knull will expose `read_file`, `write_file`, `list_directory`, etc. as available tools.
+
+## Security
+
+### Session Encryption
+
+Enable session encryption for MCP communication:
+
+```yaml
+mcp:
+  servers:
+    - name: secure-server
+      type: stdio
+      command: /path/to/server
+      sessionEncryptionKey: ${MCP_SESSION_KEY}
+      sessionEncryptionIterations: 200000
+```
+
+### API Key Enforcement
+
+MCP access is controlled by API key policies:
+
+```yaml
+apiKeys:
+  - id: client-1
+    keyVal: sk-client1-xxxxx
+    name: "Client 1"
+
+policies:
+  - id: client1-mcp
+    apiKeyId: client-1
+    modelId: gpt-4o-mini
+    allow: true
+    budgetLimit: 10000
+    usageTokens: 0
+```
+
+Only clients with valid API keys and policies can access MCP servers.
+
+### Rate Limiting
+
+MCP calls are subject to rate limits defined in policies:
+
+```yaml
+policies:
+  - id: policy-1
+    apiKeyId: client-1
+    modelId: gpt-4o-mini
+    allow: true
+    budgetLimit: 10000
+    usageTokens: 0
+```
+
+## Common MCP Servers
+
+### Filesystem Server
+
+```yaml
+mcp:
+  servers:
+    - name: filesystem
+      type: stdio
+      command: npx
+      args:
+        - -y
+        - @modelcontextprotocol/server-filesystem
+        - /tmp
+        - /data
+```
+
+### GitHub Server
+
+```yaml
+mcp:
+  servers:
+    - name: github
+      type: http
+      url: https://mcp.github.io
+      headers:
+        - key: Authorization
+          value: "Bearer ${GITHUB_TOKEN}"
+```
+
+### PostgreSQL Server
+
+```yaml
+mcp:
+  servers:
+    - name: postgres
+      type: stdio
+      command: npx
+      args:
+        - -y
+        - @modelcontextprotocol/server-postgres
+        - "postgresql://user:pass@localhost:5432/mydb"
+```
+
+## Troubleshooting
+
+### Enable Debug Logging
+
+```bash
+./bin/knull run config.yaml --debug
+```
+
+Logs will show:
+- MCP server connections
+- Request/response details
+- Session establishment
+- Error details
+
+### Check MCP Status
+
+```bash
+curl http://localhost:1064/mcp/status
+```
+
+Response:
+
+```json
+{
+  "servers": [
+    {
+      "name": "filesystem",
+      "status": "connected",
+      "tools": ["read_file", "write_file", "list_directory"]
+    }
+  ]
+}
+```
+
+### Common Issues
+
+#### Server Connection Failed
+
+```
+Error: MCP server 'filesystem' failed to start
+```
+
+Check:
+- Command and arguments are correct
+- Server binary/script exists
+- Environment variables are set
+
+#### Authentication Failed
+
+```
+Error: Invalid API key for MCP access
+```
+
+Check:
+- API key is valid
+- Policy allows MCP access
+- Policy has remaining budget
+
+#### Session Encryption Error
+
+```
+Error: Failed to establish secure session
+```
+
+Check:
+- `sessionEncryptionKey` is set
+- Both sides use the same key
+- `sessionEncryptionIterations` matches

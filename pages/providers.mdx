@@ -1,0 +1,243 @@
+# Providers
+
+Knull supports multiple LLM providers through a unified interface.
+
+## Supported Providers
+
+| Provider | Provider Value | Description |
+|----------|---------------|-------------|
+| Azure OpenAI | `azure` | Microsoft Azure OpenAI Service |
+| OpenAI | `openai` | OpenAI API (GPT-4, etc.) |
+| OpenAI Compatible | `openai_compatible` | Any API compatible with OpenAI |
+| AWS Bedrock | `aws_bedrock` | Amazon Bedrock (OpenAI-format models) |
+| AWS Anthropic | `aws_anthropic` | Amazon Bedrock (Anthropic models) |
+| Anthropic | `anthropic` | Anthropic API (Claude) |
+| GCP VertexAI | `gcp_vertex` | Google Cloud VertexAI (Gemini) |
+| GCP Anthropic | `gcp_anthropic` | Google Cloud VertexAI (Claude) |
+| Cohere | `cohere` | Cohere API |
+
+## Azure OpenAI
+
+### Basic Configuration
+
+```yaml
+models:
+  - id: gpt-4o-mini
+    provider: azure
+    endpoint: ${AZURE_OPENAI_ENDPOINT_HOSTNAME}
+    apiKey: ${AZURE_OPENAI_API_KEY}
+```
+
+### Configuration Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `endpoint` | Yes | Azure OpenAI hostname (e.g., `resource.openai.azure.com`) |
+| `apiKey` | Yes | Azure OpenAI API key |
+
+### Environment Variables
+
+```bash
+export AZURE_OPENAI_ENDPOINT_HOSTNAME="your-resource.openai.azure.com"
+export AZURE_OPENAI_API_KEY="your-api-key"
+```
+
+### Notes
+
+- Knull automatically enforces HTTP/1.1 for Azure OpenAI (Azure rejects HTTP/2)
+- Default API version is `2025-01-01-preview`
+
+## OpenAI
+
+### Basic Configuration
+
+```yaml
+models:
+  - id: gpt-4
+    provider: openai
+    endpoint: https://api.openai.com/v1
+    apiKey: ${OPENAI_API_KEY}
+```
+
+### Environment Variables
+
+```bash
+export OPENAI_API_KEY="sk-..."
+```
+
+## OpenAI Compatible
+
+Connect to any provider that implements the OpenAI API:
+
+```yaml
+models:
+  - id: local-llama
+    provider: openai_compatible
+    endpoint: http://localhost:11434/v1
+
+  - id: ollama-model
+    provider: openai_compatible
+    endpoint: host.docker.internal:11434
+```
+
+## AWS Bedrock
+
+### OpenAI-format Models
+
+```yaml
+models:
+  - id: openai.gpt-oss-20b-1:0
+    provider: aws_bedrock
+    endpoint: bedrock-runtime.us-east-1.amazonaws.com
+    awsRegion: us-east-1
+    backendName: openai-gpt-bedrock
+    awsAccessKey: ${AWS_ACCESS_KEY_ID}
+    awsSecretKey: ${AWS_SECRET_ACCESS_KEY}
+```
+
+### Configuration Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `endpoint` | Yes | Bedrock runtime endpoint |
+| `awsRegion` | Yes | AWS region |
+| `awsAccessKey` | No | AWS access key (or use environment) |
+| `awsSecretKey` | No | AWS secret key (or use environment) |
+| `backendName` | No | Custom backend name |
+
+### Environment Variables
+
+```bash
+export AWS_ACCESS_KEY_ID="..."
+export AWS_SECRET_ACCESS_KEY="..."
+export AWS_REGION="us-east-1"
+```
+
+## AWS Anthropic (Bedrock)
+
+### Claude Models on Bedrock
+
+```yaml
+models:
+  - id: us.anthropic.claude-3-5-sonnet-20241022-v2:0
+    provider: aws_anthropic
+    endpoint: bedrock-runtime.us-east-1.amazonaws.com
+    awsRegion: us-east-1
+    backendName: claude-sonnet-bedrock
+    awsAccessKey: ${AWS_ACCESS_KEY_ID}
+    awsSecretKey: ${AWS_SECRET_ACCESS_KEY}
+```
+
+## Anthropic (Direct API)
+
+```yaml
+models:
+  - id: claude-3-5-sonnet
+    provider: anthropic
+    endpoint: https://api.anthropic.com
+    apiKey: ${ANTHROPIC_API_KEY}
+```
+
+### Environment Variables
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-api03-..."
+```
+
+## GCP VertexAI
+
+### Gemini Models
+
+```yaml
+models:
+  - id: gemini-1.5-pro
+    provider: gcp_vertex
+    endpoint: ${GCP_VERTEX_ENDPOINT}
+    gcpProject: my-project
+    gcpLocation: us-central1
+    gcpAccessToken: ${GCP_ACCESS_TOKEN}
+```
+
+### Configuration Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `endpoint` | Yes | VertexAI endpoint |
+| `gcpProject` | Yes | GCP project ID |
+| `gcpLocation` | Yes | GCP region (e.g., `us-central1`) |
+| `gcpAccessToken` | No | GCP access token |
+
+### Authentication
+
+Knull supports GCP authentication via:
+
+1. **Workload Identity**: Use service account tokens
+2. **Access Token**: Pass tokens directly
+3. **ADC**: Application Default Credentials
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
+```
+
+## GCP Anthropic (VertexAI)
+
+### Claude Models on VertexAI
+
+```yaml
+models:
+  - id: claude-3-5-sonnet@vertex_ai
+    provider: gcp_anthropic
+    endpoint: ${GCP_VERTEX_ENDPOINT}
+    gcpProject: my-project
+    gcpLocation: us-central1
+    gcpAccessToken: ${GCP_ACCESS_TOKEN}
+```
+
+## Cohere
+
+```yaml
+models:
+  - id: command-r-plus
+    provider: cohere
+    endpoint: https://api.cohere.com/v1
+    apiKey: ${COHERE_API_KEY}
+```
+
+## Custom API Schemas
+
+For advanced use cases, you can override the default API schema:
+
+```yaml
+models:
+  - id: custom-model
+    provider: openai_compatible
+    endpoint: logic-service:8080
+    schema:
+      name: OpenAI
+      prefix: /api/v2/custom
+```
+
+### Schema Options
+
+| Schema Name | Description |
+|-------------|-------------|
+| `OpenAI` | Standard OpenAI API |
+| `AzureOpenAI` | Azure OpenAI API |
+| `AWSBedrock` | AWS Bedrock API |
+| `AWSAnthropic` | AWS Bedrock Anthropic API |
+| `Anthropic` | Anthropic API |
+| `GCPVertexAI` | Google VertexAI API |
+| `GCPAnthropic` | Google VertexAI Anthropic API |
+| `Cohere` | Cohere API |
+
+## Provider-Specific Headers
+
+Knull can add provider-specific headers automatically:
+
+| Provider | Header | Description |
+|----------|--------|-------------|
+| Azure | `x-azure-openai-api-version` | API version override |
+| Anthropic | `anthropic-version` | API version |
+| Anthropic | `anthropic-beta` | Beta features |
+
+These can be configured via header mutation in the model configuration.

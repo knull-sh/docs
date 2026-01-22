@@ -1,3 +1,355 @@
 # Advanced
 
-This is the index page for the Advanced folder!
+Advanced configuration and customization options for Knull.
+
+## Header Mutation
+
+Knull can modify HTTP headers before sending requests to backends:
+
+```yaml
+models:
+  - id: gpt-4o-mini
+    provider: azure
+    endpoint: ${AZURE_OPENAI_ENDPOINT_HOSTNAME}
+    apiKey: ${AZURE_OPENAI_API_KEY}
+    headerMutation:
+      set:
+        - name: x-custom-header
+          value: "custom-value"
+        - name: x-azure-api-version
+          value: "2024-05-01-preview"
+      remove:
+        - authorization
+        - x-api-key
+```
+
+### Header Mutation Fields
+
+| Field | Description |
+|-------|-------------|
+| `set` | Headers to add or overwrite |
+| `remove` | Headers to remove from request |
+
+## Body Mutation
+
+Modify request body fields before sending to backends:
+
+```yaml
+models:
+  - id: gpt-4o-mini
+    provider: azure
+    endpoint: ${AZURE_OPENAI_ENDPOINT_HOSTNAME}
+    bodyMutation:
+      set:
+        - path: max_tokens
+          value: "1000"
+        - path: temperature
+          value: "0.7"
+      remove:
+        - user
+```
+
+### Body Mutation Fields
+
+| Field | Description |
+|-------|-------------|
+| `set` | Fields to add or overwrite |
+| `remove` | Top-level fields to remove |
+
+### Body Field Value Types
+
+Values are parsed as JSON:
+
+```yaml
+bodyMutation:
+  set:
+    - path: max_tokens
+      value: "1000"  # Number
+
+    - path: temperature
+      value: "0.7"   # Number
+
+    - path: metadata
+      value: '{"source": "knull"}'  # Object
+
+    - path: stop
+      value: '["\\n", "##"]'  # Array
+```
+
+## Custom API Schemas
+
+Override the default API schema for a model:
+
+```yaml
+models:
+  - id: custom-model
+    provider: openai_compatible
+    endpoint: http://custom-api:8080
+    schema:
+      name: OpenAI
+      prefix: /api/v2
+```
+
+### Schema Options
+
+| Schema | Description |
+|--------|-------------|
+| `OpenAI` | Standard OpenAI API (`/v1/chat/completions`) |
+| `AzureOpenAI` | Azure OpenAI API |
+| `AWSBedrock` | AWS Bedrock API |
+| `AWSAnthropic` | AWS Bedrock Anthropic API |
+| `Anthropic` | Anthropic API (`/v1/messages`) |
+| `GCPVertexAI` | Google VertexAI API |
+| `GCPAnthropic` | Google VertexAI Anthropic API |
+| `Cohere` | Cohere API |
+
+### Custom Prefix
+
+```yaml
+models:
+  - id: custom-model
+    provider: openai_compatible
+    endpoint: http://custom-api:8080
+    schema:
+      name: OpenAI
+      prefix: /custom/api/v1
+```
+
+Requests to `/v1/chat/completions` will be routed to `/custom/api/v1/chat/completions`.
+
+## Backend Authentication
+
+Configure how Knull authenticates to backend services:
+
+### Azure API Key
+
+```yaml
+models:
+  - id: azure-model
+    provider: azure
+    endpoint: ${AZURE_OPENAI_ENDPOINT}
+    auth:
+      azureAPIKey:
+        key: ${AZURE_API_KEY}
+```
+
+### AWS Credentials
+
+```yaml
+models:
+  - id: bedrock-model
+    provider: aws_bedrock
+    endpoint: ${BEDROCK_ENDPOINT}
+    awsRegion: us-east-1
+    auth:
+      aws:
+        credentialFileLiteral: |
+          [default]
+          aws_access_key_id = ${AWS_ACCESS_KEY}
+          aws_secret_access_key = ${AWS_SECRET_KEY}
+        region: us-east-1
+```
+
+### GCP Authentication
+
+```yaml
+models:
+  - id: vertex-model
+    provider: gcp_vertex
+    endpoint: ${VERTEX_ENDPOINT}
+    gcpProject: my-project
+    gcpLocation: us-central1
+    auth:
+      gcp:
+        accessToken: ${GCP_TOKEN}
+        region: us-central1
+        projectName: my-project
+```
+
+## Advanced Routing
+
+### Model Aliases
+
+Use aliases to simplify model names:
+
+```yaml
+models:
+  - id: gpt-4o-mini
+    provider: azure
+    endpoint: ${AZURE_ENDPOINT}
+    alias: gpt
+```
+
+Now clients can use either `gpt-4o-mini` or `gpt`:
+
+```bash
+curl http://localhost:1975/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt", "messages": [...]}'
+```
+
+### Header-based Routing
+
+Route based on custom headers:
+
+```yaml
+# Requires custom Envoy configuration
+```
+
+## Token Counting
+
+Knull counts tokens for usage tracking:
+
+### Token Types
+
+| Type | Description |
+|------|-------------|
+| `InputToken` | Prompt tokens |
+| `OutputToken` | Response tokens |
+| `CachedInputToken` | Cached prompt tokens |
+| `TotalToken` | Input + Output |
+
+### Custom Token Cost
+
+Configure custom cost calculation:
+
+```yaml
+filter:
+  llmRequestCosts:
+    - metadataKey: "cost"
+      type: CEL
+      cel: "output_token * 3 + input_token"
+```
+
+## Metrics and Observability
+
+### Prometheus Metrics
+
+Knull exposes Prometheus metrics at `/metrics`:
+
+```bash
+curl http://localhost:1064/metrics
+```
+
+Available metrics:
+- `knull_requests_total` - Total requests
+- `knull_tokens_total` - Total tokens processed
+- `knull_latency_seconds` - Request latency
+- `knull_errors_total` - Total errors
+
+### OpenTelemetry
+
+Enable OpenTelemetry tracing:
+
+```bash
+OTEL_AIGW_METRICS_REQUEST_HEADER_ATTRIBUTES="user_id,api_key" \
+OTEL_AIGW_SPAN_REQUEST_HEADER_ATTRIBUTES="user_id,api_key" \
+./bin/knull run config.yaml --debug
+```
+
+## Performance Tuning
+
+### Worker Threads
+
+Knull uses Go's runtime for concurrency. For high throughput:
+
+```bash
+GOMAXPROCS=4 ./bin/knull run config.yaml
+```
+
+### Connection Pooling
+
+Backend connection pooling is handled by Envoy. Configure in Envoy resources.
+
+### Memory Usage
+
+Default memory is sufficient for moderate loads. For high traffic:
+
+```yaml
+resources:
+  limits:
+    memory: 2Gi
+    cpu: 2000m
+```
+
+## Debugging
+
+### Enable Debug Mode
+
+```bash
+./bin/knull run config.yaml --debug
+```
+
+### View Logs
+
+```bash
+# Follow logs
+tail -f ~/.local/state/knull/runs/*/aigw.log
+
+# Or use journald
+journalctl -u knull -f
+```
+
+### Test Configuration
+
+```bash
+# Validate YAML
+./bin/knull validate config.yaml
+
+# Dry run
+./bin/knull run config.yaml --dry-run
+```
+
+## Troubleshooting
+
+### Check Configuration
+
+```bash
+# View loaded configuration
+curl http://localhost:1064/config
+```
+
+### Check Health
+
+```bash
+# Basic health
+curl http://localhost:1064/health
+
+# Readiness
+curl http://localhost:1064/ready
+```
+
+### Common Issues
+
+#### Connection Refused
+
+```
+Error: connection refused to backend
+```
+
+Check:
+- Backend endpoint is correct
+- Backend is running
+- Network connectivity
+
+#### API Key Invalid
+
+```
+Error: invalid API key
+```
+
+Check:
+- API key format is correct (`sk-` prefix)
+- API key exists in configuration
+- Policy allows the model
+
+#### Budget Exceeded
+
+```
+Error: budget exceeded
+```
+
+Check:
+- Policy has remaining budget
+- Usage is correctly tracked
+- Consider increasing budget limit

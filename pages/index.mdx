@@ -1,11 +1,47 @@
-# Introduction
- 
-Welcome to Nextra! This is a basic docs template. You can use it as a starting point for your own project :)
+# Knull - AI Gateway
 
-## What is Nextra?
+Knull is a high-performance, standalone AI Gateway designed to run as a local or edge-resident control plane and data plane for AI traffic. It provides a unified interface for routing requests to multiple LLM providers with built-in observability, authentication, and rate limiting.
 
-A **simple**, **powerful** and **flexible** site generation framework with everything you love from Next.js.
+## What is Knull?
 
-## Documentation
+Knull Core is the standalone foundation of the Knull AI Gateway. It is designed to run as a single executable (`knull`) that manages Envoy and the External Processor without requiring a Kubernetes cluster.
 
-The documentation is available at [https://nextra.site](https://nextra.site).
+## Key Features
+
+- **Standalone Binary**: Single executable that manages Envoy and the External Processor
+- **Multi-Provider Support**: Route to Azure OpenAI, OpenAI, AWS Bedrock, Anthropic, GCP VertexAI, and more
+- **No Kubernetes Required**: Uses a virtualized control plane to run Envoy Gateway logic locally
+- **API Key Management**: Built-in support for client API keys with budget enforcement
+- **Token Usage Tracking**: Track token usage per API key and model
+- **MCP Support**: Model Context Protocol support for AI tool integration
+- **High Availability**: Redis-backed state for multi-instance deployments
+
+## Quick Start
+
+```bash
+# Build the binary
+make build
+
+# Run with a configuration file
+./bin/knull run examples/knull.yaml
+
+# Test the gateway
+curl http://localhost:1975/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "hi"}]}'
+```
+
+## Architecture
+
+Knull consists of three main components:
+
+1. **Envoy Gateway**: Handles incoming AI traffic and routes to configured backends
+2. **External Processor**: Performs request/response processing including token counting, header mutation, and authentication
+3. **SQLite Database**: Stores configuration, API keys, and usage data
+
+## Next Steps
+
+- [Features](/features) - Learn about all Knull capabilities
+- [Configuration](/configuration) - Set up your gateway
+- [Providers](/providers) - Configure LLM providers
+- [Deployment](/deployment) - Deploy in production
