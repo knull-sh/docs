@@ -1,0 +1,99 @@
+# Features
+
+Knull provides a comprehensive set of features for managing AI traffic.
+
+## Core Features
+
+### AI-Native Routing
+
+Knull provides direct support for AI Gateway routing configurations:
+
+- **Model-based Routing**: Route requests based on the model specified in the request
+- **Header-based Routing**: Use headers like `x-ai-eg-model` for advanced routing
+- **Backend Fallback**: Configure fallback backends for resilience
+
+### Multi-Provider Support
+
+Connect to multiple LLM providers through a single gateway:
+
+- **Azure OpenAI**: Optimized with automatic HTTP/1.1 enforcement
+- **OpenAI**: Standard OpenAI API compatibility
+- **AWS Bedrock**: Access models from Anthropic, Cohere, and other providers
+- **GCP VertexAI**: Support for Gemini and other Google models
+- **Anthropic**: Direct Anthropic API support
+- **OpenAI Compatible**: Any provider that implements the OpenAI API
+
+### External Processor
+
+Built-in AI External Processor for:
+
+- **Token Counting**: Track input, output, and cached tokens
+- **Header Mutation**: Add, remove, or modify request/response headers
+- **Credential Management**: Securely manage API keys for backend services
+- **Request/Response Transformation**: Modify requests before sending to backends
+
+## Security Features
+
+### API Key Management
+
+- **Client API Keys**: Generate and manage API keys for clients
+- **Backend Authentication**: Securely authenticate to different LLM providers
+- **Credential Rotation**: Support for rotating credentials without downtime
+
+### Backend Security
+
+- **Azure API Key**: Secure Azure OpenAI authentication
+- **AWS Credentials**: IAM-based authentication for Bedrock
+- **GCP Workload Identity**: Native GCP authentication
+- **Header-based Auth**: Custom authentication headers
+
+## Observability
+
+### Usage Tracking
+
+- **Token Usage**: Track tokens per API key and model
+- **Request Counting**: Monitor request volumes
+- **Budget Enforcement**: Set and enforce budget limits
+
+### Logging
+
+- **Debug Mode**: Detailed logging for troubleshooting
+- **Structured Logging**: JSON-formatted logs for easy parsing
+- **Configurable Log Levels**: Adjust verbosity as needed
+
+## High Availability
+
+### Redis Integration
+
+- **Distributed State**: Share usage data across instances
+- **Pub/Sub Reload**: Coordinated configuration reloads
+- **Atomic Counters**: Real-time budget enforcement
+
+### Configuration Hot Reload
+
+- **Database-backed Config**: Configuration stored in SQLite or PostgreSQL
+- **Live Updates**: Update configuration without restarting
+- **Cluster Coordination**: Synchronized reloads in HA mode
+
+## Configuration
+
+### Environment Variable Substitution
+
+Knull supports environment variables in configuration files:
+
+```yaml
+models:
+  - id: gpt-4o-mini
+    provider: azure
+    endpoint: ${AZURE_OPENAI_ENDPOINT_HOSTNAME}
+    apiKey: ${AZURE_OPENAI_API_KEY}
+```
+
+### XDG Base Directory Support
+
+Knull follows XDG base directory specifications:
+
+- **Config**: `$XDG_CONFIG_HOME/knull` (default: `~/.config/knull`)
+- **Data**: `$XDG_DATA_HOME/knull` (default: `~/.local/share/knull`)
+- **State**: `$XDG_STATE_HOME/knull` (default: `~/.local/state/knull`)
+- **Runtime**: `$XDG_RUNTIME_DIR/knull` (default: `/tmp/runtime-$USER/knull`)

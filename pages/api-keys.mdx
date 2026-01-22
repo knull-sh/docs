@@ -1,0 +1,277 @@
+# API Keys & Policies
+
+Knull provides built-in support for client API keys with budget enforcement and usage tracking.
+
+## API Key Management
+
+### Creating API Keys
+
+Define API keys in your configuration:
+
+```yaml
+apiKeys:
+  - id: client-1
+    keyVal: sk-knull-client1-xxxxxxxxxxxxx
+    name: "Client 1"
+    owner: "team-a@example.com"
+    metadata: '{"tier": "premium"}'
+
+  - id: client-2
+    keyVal: sk-knull-client2-xxxxxxxxxxxxx
+    name: "Client 2"
+    owner: "team-b@example.com"
+```
+
+### API Key Structure
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `id` | Yes | Unique identifier for the API key |
+| `keyVal` | Yes | The actual API key value (prefixed with `sk-`) |
+| `name` | Yes | Human-readable name |
+| `owner` | No | Owner/team email or identifier |
+| `metadata` | No | Additional JSON metadata |
+
+## Policy Management
+
+Policies define access rules and budget limits for API keys:
+
+```yaml
+policies:
+  - id: policy-client1-gpt4
+    apiKeyId: client-1
+    modelId: gpt-4
+    allow: true
+    budgetLimit: 10000
+    usageTokens: 0
+
+  - id: policy-client1-claude
+    apiKeyId: client-1
+    modelId: claude-3-5-sonnet
+    allow: true
+    budgetLimit: 5000
+    usageTokens: 0
+```
+
+### Policy Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `id` | Yes | Unique identifier for the policy |
+| `apiKeyId` | Yes | Reference to the API key |
+| `modelId` | Yes | Model ID to apply this policy to |
+| `allow` | Yes | Whether to allow access |
+| `budgetLimit` | Yes | Maximum tokens allowed |
+| `usageTokens` | Yes | Current usage (persisted) |
+
+### Policy Examples
+
+#### Allow Access with Budget
+
+```yaml
+policies:
+  - id: policy-1
+    apiKeyId: client-1
+    modelId: gpt-4o-mini
+    allow: true
+    budgetLimit: 10000
+    usageTokens: 0
+```
+
+#### Deny Access
+
+```yaml
+policies:
+  - id: policy-deny
+    apiKeyId: client-1
+    modelId: gpt-4
+    allow: false
+    budgetLimit: 0
+    usageTokens: 0
+```
+
+#### Multiple Models
+
+```yaml
+apiKeys:
+  - id: user-1
+    keyVal: sk-user1-xxxxx
+    name: "User 1"
+
+policies:
+  # Access to GPT-4o-mini with 10k token budget
+  - id: user1-gpt4mini
+    apiKeyId: user-1
+    modelId: gpt-4o-mini
+    allow: true
+    budgetLimit: 10000
+    usageTokens: 0
+
+  # Access to Claude with 20k token budget
+  - id: user1-claude
+    apiKeyId: user-1
+    modelId: claude-3-5-sonnet
+    allow: true
+    budgetLimit: 20000
+    usageTokens: 0
+```
+
+## Usage Tracking
+
+Knull tracks token usage for each policy:
+
+1. **Input Tokens**: Tokens in the request
+2. **Output Tokens**: Tokens in the response
+3. **Cached Tokens**: Cached input tokens (if applicable)
+
+### Single Instance Mode
+
+In single-instance mode, usage is tracked in-memory and periodically flushed to SQLite.
+
+### High Availability Mode
+
+With Redis enabled, usage is tracked atomically:
+
+```yaml
+redis:
+  host: redis.example.com
+  port: 6379
+  password: ""
+  db: 0
+```
+
+Usage is:
+- Stored in Redis for real-time access (`<1ms` latency)
+- Periodically flushed to PostgreSQL for persistence
+- Synchronized across all Knull instances
+
+## API Key Authentication
+
+Clients authenticate using the `Authorization` header:
+
+```bash
+curl http://localhost:1975/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk-knull-client1-xxxxxxxxxxxxx" \
+  -d '{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "hi"}]}'
+```
+
+## Budget Enforcement
+
+### How It Works
+
+1. Before each request, Knull checks the current usage
+2. If usage exceeds the budget limit, the request is denied
+3. After each request, usage is updated
+
+### Response on Budget Exceeded
+
+```json
+{
+  "error": {
+    "message": "Budget exceeded for API key",
+    "type": "budget_exceeded",
+    "code": 403
+  }
+}
+```
+
+### Budget Tracking
+
+```yaml
+# Start with 0 usage
+policies:
+  - id: policy-1
+    apiKeyId: client-1
+    modelId: gpt-4o-mini
+    allow: true
+    budgetLimit: 10000
+    usageTokens: 0  # Reset to track from scratch
+```
+
+## Admin API
+
+### Get Usage
+
+```bash
+curl http://localhost:1064/usage?policyId=policy-1
+```
+
+Response:
+
+```json
+{
+  "policyId": "policy-1",
+  "usageTokens": 1234,
+  "budgetLimit": 10000
+}
+```
+
+### Reset Usage
+
+```bash
+curl -X POST http://localhost:1064/usage/reset \
+  -H "Content-Type: application/json" \
+  -d '{"policyId": "policy-1"}'
+```
+
+### Reload Configuration
+
+```bash
+curl -X POST http://localhost:1064/reload
+```
+
+## Best Practices
+
+### API Key Generation
+
+Use secure random values for API keys:
+
+```bash
+# Generate a secure API key
+openssl rand -base64 32 | sed 's/=//g' | sed 's/+/-/g' | sed 's/\//_/g' | head -c 48
+```
+
+Prefix API keys for identification:
+
+```
+sk-knull-{client-id}-{random-suffix}
+```
+
+### Budget Setting
+
+Start with conservative budgets and adjust based on actual usage:
+
+```yaml
+policies:
+  - id: new-client-policy
+    apiKeyId: new-client
+    modelId: gpt-4o-mini
+    allow: true
+    budgetLimit: 1000  # Start small
+    usageTokens: 0
+```
+
+### Multiple Environments
+
+Use separate configurations for different environments:
+
+```yaml
+# development.yaml
+policies:
+  - id: dev-policy
+    apiKeyId: dev-key
+    modelId: gpt-4o-mini
+    allow: true
+    budgetLimit: 100000
+    usageTokens: 0
+
+# production.yaml
+policies:
+  - id: prod-policy
+    apiKeyId: prod-key
+    modelId: gpt-4o-mini
+    allow: true
+    budgetLimit: 10000
+    usageTokens: 0
+```

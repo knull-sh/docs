@@ -1,0 +1,333 @@
+# Deployment
+
+Knull can be deployed in various environments from local development to production.
+
+## Prerequisites
+
+- Go 1.22+
+- Make
+- (Optional) Docker for containerized deployments
+
+## Building
+
+```bash
+# Build the binary
+make build
+
+# Binary is available at ./bin/knull
+```
+
+## Running Locally
+
+### Quick Start
+
+```bash
+# Run with a YAML configuration file
+./bin/knull run examples/knull.yaml
+
+# Subsequent runs use the saved SQLite configuration
+./bin/knull run
+
+# Override with a different YAML file
+./bin/knull run examples/alias.yaml
+```
+
+### Debug Mode
+
+```bash
+./bin/knull run examples/knull.yaml --debug
+```
+
+### Port Configuration
+
+| Port | Service | Description |
+|------|---------|-------------|
+| 1975 | AI Data Plane | AI requests (Envoy) |
+| 1064 | Admin API | Health checks, metrics |
+
+## Docker Deployment
+
+### Building the Image
+
+```bash
+docker build -t knull:latest .
+```
+
+### Running with Docker
+
+```bash
+# Run with a YAML configuration file (auto-imports to SQLite volume)
+docker run -d \
+  --name knull \
+  -p 1975:1975 \
+  -p 1064:1064 \
+  -v $(pwd)/examples/knull.yaml:/app/config.yaml \
+  knull:latest run /app/config.yaml
+```
+
+### Docker Volume for Persistence
+
+```bash
+# Create a volume for SQLite persistence
+docker volume create knull-data
+
+# Run with volume mount
+docker run -d \
+  --name knull \
+  -p 1975:1975 \
+  -p 1064:1064 \
+  -v knull-data:/data \
+  -v $(pwd)/config.yaml:/app/config.yaml \
+  knull:latest run /app/config.yaml
+
+# Restart without YAML path to use persisted config
+docker restart knull
+```
+
+### Environment Variables in Docker
+
+```bash
+docker run -d \
+  --name knull \
+  -p 1975:1975 \
+  -e AZURE_OPENAI_API_KEY="your-key" \
+  -e AZURE_OPENAI_ENDPOINT_HOSTNAME="your-host" \
+  knull:latest run
+```
+
+### Debug Mode in Docker
+
+```bash
+docker run -it \
+  --rm \
+  -p 1975:1975 \
+  -p 1064:1064 \
+  -v $(pwd)/examples/knull.yaml:/app/knull.yaml \
+  knull:latest run --debug /app/knull.yaml
+```
+
+## Kubernetes Deployment
+
+### Helm Chart
+
+Knull includes a Helm chart for Kubernetes deployments:
+
+```bash
+# Add the repository (if published)
+helm repo add knull https://gd03champ.github.io/knull
+
+# Install the chart
+helm install knull knull/knull \
+  --values values.yaml
+```
+
+### Helm Values
+
+See the [Helm chart documentation](https://github.com/gd03champ/knull/tree/main/deploy/helm/knull) for configuration options.
+
+### Key Configuration
+
+```yaml
+replicaCount: 3
+
+image:
+  repository: knull
+  tag: latest
+
+service:
+  type: LoadBalancer
+  ports:
+    ai: 1975
+    admin: 1064
+
+resources:
+  requests:
+    memory: 512Mi
+    cpu: 500m
+  limits:
+    memory: 2Gi
+    cpu: 2000m
+
+config:
+  existingConfigMap: knull-config
+  configFile: config.yaml
+```
+
+## High Availability
+
+### PostgreSQL Backend
+
+For production, use PostgreSQL instead of SQLite:
+
+```yaml
+database:
+  type: postgres
+  host: postgres.example.com
+  port: 5432
+  user: knull
+  password: ${POSTGRES_PASSWORD}
+  database: knull_db
+  sslMode: require
+```
+
+### Redis for Distributed State
+
+Enable Redis for distributed usage tracking and coordinated reloads:
+
+```yaml
+redis:
+  host: redis.example.com
+  port: 6379
+  password: ${REDIS_PASSWORD}
+  db: 0
+```
+
+### Multi-Instance Deployment
+
+1. Configure PostgreSQL for shared configuration
+2. Configure Redis for distributed state
+3. Deploy multiple Knull replicas
+4. Configure load balancer to distribute traffic
+
+## Docker Compose
+
+### Basic Setup
+
+```yaml
+version: '3.8'
+services:
+  knull:
+    image: knull:latest
+    ports:
+      - "1975:1975"
+      - "1064:1064"
+    volumes:
+      - ./config.yaml:/app/config.yaml
+      - knull-data:/data
+    environment:
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_ENDPOINT_HOSTNAME=${AZURE_OPENAI_ENDPOINT_HOSTNAME}
+    restart: unless-stopped
+
+volumes:
+  knull-data:
+```
+
+### High Availability Setup
+
+```yaml
+version: '3.8'
+services:
+  knull:
+    image: knull:latest
+    deploy:
+      replicas: 3
+    ports:
+      - "1975:1975"
+      - "1064:1064"
+    volumes:
+      - ./config.yaml:/app/config.yaml
+      - knull-data:/data
+    environment:
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_ENDPOINT_HOSTNAME=${AZURE_OPENAI_ENDPOINT_HOSTNAME}
+      - DATABASE_TYPE=postgres
+      - DATABASE_HOST=postgres
+      - DATABASE_USER=knull
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=knull
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=knull_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+volumes:
+  knull-data:
+  postgres-data:
+```
+
+## Security Considerations
+
+### API Key Security
+
+- Store API keys in secrets management systems
+- Use environment variables for sensitive values
+- Rotate credentials regularly
+
+### Network Security
+
+- Deploy behind a secure network boundary
+- Use TLS for all connections
+- Restrict admin API access
+
+### Container Security
+
+```dockerfile
+# Use a minimal base image
+FROM gcr.io/distroless/static:nonroot
+
+# Add knull binary
+COPY --from=builder /app/knull /knull
+
+# Run as non-root user
+USER nonroot:nonroot
+
+ENTRYPOINT ["/knull"]
+```
+
+## Health Checks
+
+### Admin API Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Basic health check |
+| `GET /ready` | Readiness check |
+| `GET /metrics` | Prometheus metrics |
+
+### Docker Healthcheck
+
+```yaml
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:1064/health"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+```
+
+## Resource Requirements
+
+### Minimum
+
+| Resource | Value |
+|----------|-------|
+| Memory | 256 MB |
+| CPU | 250 m |
+
+### Recommended
+
+| Resource | Value |
+|----------|-------|
+| Memory | 1 GB |
+| CPU | 1000 m |
+
+### High Traffic
+
+| Resource | Value |
+|----------|-------|
+| Memory | 2 GB |
+| CPU | 2000 m |

@@ -1,0 +1,172 @@
+# Configuration
+
+Knull can be configured using YAML files with environment variable substitution.
+
+## Configuration File Structure
+
+```yaml
+# Database configuration
+database:
+  type: sqlite  # or postgres
+  path: /path/to/knull.db
+
+# Optional Redis for HA mode
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+
+# Gateway listeners
+gateways:
+  - name: aigw-run
+    port: 1975
+
+# Model configurations
+models:
+  - id: model-id
+    provider: azure  # openai, aws_bedrock, etc.
+    endpoint: ${ENDPOINT_URL}
+    apiKey: ${API_KEY}
+
+# Optional API keys for clients
+apiKeys:
+  - id: key-1
+    keyVal: sk-xxxx
+    name: "Client Name"
+
+# Optional policies for API keys
+policies:
+  - id: policy-1
+    apiKeyId: key-1
+    modelId: gpt-4o-mini
+    allow: true
+    budgetLimit: 10000
+```
+
+## Gateways
+
+The `gateways` section defines the listeners for incoming AI traffic:
+
+```yaml
+gateways:
+  - name: aigw-run
+    port: 1975
+```
+
+Each gateway creates a listener on the specified port. Multiple gateways can be configured for different routing needs.
+
+## Models
+
+The `models` section defines the available AI models and their backends:
+
+```yaml
+models:
+  - id: gpt-4o-mini
+    provider: azure
+    endpoint: ${AZURE_OPENAI_ENDPOINT_HOSTNAME}
+    apiKey: ${AZURE_OPENAI_API_KEY}
+
+  - id: tinyllama
+    provider: openai_compatible
+    endpoint: host.docker.internal:11434
+```
+
+### Model Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `id` | Yes | Unique identifier for the model |
+| `provider` | Yes | LLM provider type |
+| `endpoint` | Yes | Backend endpoint URL |
+| `apiKey` | No | API key for authentication |
+| `backendName` | No | Custom backend name for routing |
+| `alias` | No | Alternative model ID |
+| `schema` | No | Custom API schema configuration |
+| `auth` | No | Backend authentication policy |
+
+## Database Configuration
+
+### SQLite (Default)
+
+```yaml
+database:
+  type: sqlite
+  path: /path/to/knull.db
+```
+
+### PostgreSQL
+
+```yaml
+database:
+  type: postgres
+  host: localhost
+  port: 5432
+  user: knull
+  password: knullpassword
+  database: knull_db
+  sslMode: disable
+```
+
+## Redis Configuration (HA Mode)
+
+```yaml
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+```
+
+## Environment Variables
+
+Knull supports environment variable substitution in configuration files:
+
+```yaml
+models:
+  - id: gpt-4o-mini
+    provider: azure
+    endpoint: ${AZURE_OPENAI_ENDPOINT_HOSTNAME}
+    apiKey: ${AZURE_OPENAI_API_KEY}
+```
+
+Common environment variables:
+
+| Variable | Description |
+|----------|-------------|
+| `AZURE_OPENAI_ENDPOINT_HOSTNAME` | Azure OpenAI endpoint |
+| `AZURE_OPENAI_API_KEY` | Azure OpenAI API key |
+| `AWS_ACCESS_KEY_ID` | AWS access key |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key |
+| `ANTHROPIC_API_KEY` | Anthropic API key |
+| `GOOGLE_APPLICATION_CREDENTIALS` | GCP credentials path |
+
+## Configuration Persistence
+
+Knull persists configuration to the database:
+
+1. **First Run**: `knull run <config.yaml>` imports config to database
+2. **Subsequent Runs**: `knull run` loads from existing database
+3. **Override**: Running with a new config updates the database (upsert)
+
+Configuration is stored at:
+- SQLite: `$XDG_DATA_HOME/knull/knull.db`
+- PostgreSQL: Configured database
+
+## Configuration Hot Reload
+
+Knull supports configuration hot reload via:
+
+1. **API Call**: Send POST to `/reload` endpoint
+2. **Redis Pub/Sub**: Published message triggers reload (HA mode)
+3. **Database Watch**: Changes in PostgreSQL trigger reload
+
+## Examples
+
+See the [examples directory](https://github.com/gd03champ/knull/tree/main/examples) for complete configuration examples:
+
+- `knull.yaml` - Basic configuration with multiple providers
+- `azure.yaml` - Azure OpenAI configuration
+- `aws.yaml` - AWS Bedrock configuration
+- `gcp.yaml` - GCP VertexAI configuration
+- `knull.ha.yaml` - High availability configuration
