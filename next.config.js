@@ -3,4 +3,8 @@ const withNextra = require('nextra')({
   themeConfig: './theme.config.tsx',
 })
 
+const withNextra = nextra({
+  githubEditUrl: 'https://github.com/knull/docs/edit/main/content'
+})
+
 module.exports = withNextra()
